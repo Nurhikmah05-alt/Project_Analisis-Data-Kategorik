@@ -1,0 +1,379 @@
+---
+title: "Tugas 1 — Pengantar Analisis Data Kategori"
+subtitle: "Latihan Analisis Data dengan R dan Quarto"
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+    toc-title: "Daftar Isi"
+    toc-depth: 2
+    toc-location: right
+    code-copy: false
+    code-tools: false
+    number-sections: true
+    embed-resources: true
+    title-block-banner: true
+execute:
+  echo: true
+  warning: false
+  message: false
+lang: id
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+identitas <- read.csv("identitas_tugas.csv", stringsAsFactors = FALSE)
+file_data <- file.path("data", identitas$file_data[1])
+
+data <- read.csv("C:/Users/Ariel IT Computer/Downloads/P1_241061005/data_tugas1_241061005.csv",
+  na.strings = c("", "NA"),
+  stringsAsFactors = FALSE
+)
+```
+
+::: {.student-card}
+<div class="label">Mahasiswa</div>
+<div class="value">`r identitas$Nama[1]`</div>
+
+<div class="label">NIM</div>
+<div class="value">`r identitas$NIM[1]`</div>
+
+<div class="label">Kode Tugas</div>
+<div class="value">`r identitas$kode_tugas[1]`</div>
+:::
+
+::: {.learning-box}
+**Tujuan tugas.** Gunakan kembali konsep dan fungsi R yang telah dibahas pada Pertemuan 1
+untuk mengenali struktur data kategori, membuat ringkasan deskriptif, memvisualisasikan data,
+dan menjelaskan insight secara hati-hati.
+:::
+
+::: {.callout-note}
+## Pola kerja
+
+Ikuti pola kelas: **predict → run → inspect → explain**.
+
+Pada setiap bagian diberikan **sedikit petunjuk kode**.  
+Jika diminta menjelaskan atau menuliskan interpretasi, gunakan kotak **Jawaban Anda** yang telah disediakan.
+:::
+
+# 1. Mengenali Data
+
+Gunakan R untuk melihat beberapa baris awal, struktur data, dan nama variabel.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+```r
+head(...)
+str(...)
+names(...)
+```
+
+Ganti `...` dengan objek data yang digunakan.
+:::
+
+```{r}
+head(data)
+str(data)
+names(data)
+```
+
+Lengkapi tabel berikut.
+
+| Variabel | Jenis Variabel | Alasan Singkat |
+|---|---|---|
+| RecordID | Identifier (nominal) | Angka unik tiap responden, hanya label, tidak bermakna kuantitatif |
+| ProgramStudi | Nominal | Kategori sejajar (4 program studi) tanpa urutan tingkatan |
+| Gender | Nominal | Kategori sejajar (L/P) tanpa urutan tingkatan |
+| DeviceUtama | Nominal | Jenis perangkat, tidak ada tingkatan alami antar kategori |
+| ModaBelajar | Nominal | Cara belajar, kategori sejajar tanpa urutan |
+| Kepuasan | Ordinal | Ada tingkatan jelas: Tidak Puas < Cukup < Puas < Sangat Puas |
+| IntensitasBelajar | Ordinal | Ada tingkatan jelas: Rendah < Sedang < Tinggi |
+| DurasiBelajarJam | Numerik (rasio) | Berupa angka desimal (jam) yang bisa dijumlah/dirata-ratakan |
+
+Jawab singkat:
+
+1. Variabel mana yang merupakan identifier?
+2. Variabel mana yang bersifat ordinal?
+3. Mengapa kode angka belum tentu berarti data numerik?
+
+::: {.answer-box}
+**Jawaban Anda**
+
+1. `RecordID` adalah identifier karena hanya berfungsi sebagai penanda unik tiap responden, bukan besaran yang bisa dihitung.
+2. Variabel ordinal pada data ini adalah `Kepuasan` (Tidak Puas–Cukup–Puas–Sangat Puas) dan `IntensitasBelajar` (Rendah–Sedang–Tinggi), karena kategorinya memiliki urutan tingkatan.
+3. Kode angka belum tentu berarti data numerik karena angka tersebut bisa hanya berfungsi sebagai label kategori (misalnya kode program studi atau ID responden); operasi matematis seperti rata-rata atau selisih terhadap angka semacam itu tidak memiliki makna.
+:::
+
+# 2. Menyiapkan Data Kategori
+
+Variabel latihan Anda:
+
+```{r}
+cat("Nominal :", identitas$nominal_utama[1], "\n")
+cat("Ordinal :", identitas$ordinal_utama[1], "\n")
+cat("Urutan  :", identitas$urutan_ordinal[1], "\n")
+```
+
+Lakukan hal berikut:
+
+1. ubah variabel nominal menjadi factor;
+2. ubah variabel ordinal menjadi ordered factor;
+3. periksa level kategorinya.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+Untuk nominal:
+
+```r
+factor(...)
+levels(...)
+```
+
+Untuk ordinal:
+
+```r
+factor(..., levels = ..., ordered = TRUE)
+```
+:::
+
+```{r}
+nominal_var <- identitas$nominal_utama[1]
+ordinal_var <- identitas$ordinal_utama[1]
+urutan <- strsplit(identitas$urutan_ordinal[1], "\\|")[[1]]
+
+# 1. Ubah variabel nominal menjadi factor
+data[[nominal_var]] <- factor(data[[nominal_var]])
+levels(data[[nominal_var]])
+
+# 2. Ubah variabel ordinal menjadi ordered factor
+data[[ordinal_var]] <- factor(data[[ordinal_var]], levels = urutan, ordered = TRUE)
+levels(data[[ordinal_var]])
+```
+
+Tuliskan satu kalimat: **mengapa urutan level ordinal perlu ditetapkan dengan benar?**
+
+::: {.answer-box}
+**Jawaban Anda**
+
+Urutan level ordinal perlu ditetapkan dengan benar agar R (dan analisis lanjutan seperti perbandingan atau pengurutan kategori) memahami tingkatan sebenarnya dari data, misalnya bahwa "Sangat Puas" lebih tinggi daripada "Puas", sehingga interpretasi dan visualisasi tetap akurat dan tepat.
+:::
+
+# 3. Quality Control Awal
+
+Lakukan pemeriksaan sederhana terhadap:
+
+- struktur data;
+- level/kategori;
+- missing value;
+- konsistensi penulisan kategori.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+Beberapa pola fungsi yang dapat digunakan:
+
+```r
+str(...)
+levels(...)
+unique(...)
+is.na(...)
+colSums(...)
+```
+
+Pilih fungsi yang sesuai dengan tujuan pemeriksaan Anda.
+:::
+
+```{r}
+str(data)
+levels(data[[nominal_var]])
+levels(data[[ordinal_var]])
+unique(data$ModaBelajar)
+colSums(is.na(data))
+```
+
+Tuliskan **dua temuan singkat** dari pemeriksaan tersebut.
+
+::: {.answer-box}
+**Jawaban Anda**
+
+1. Terdapat beberapa nilai hilang (missing value): 1 pada `DeviceUtama`, 2 pada `Kepuasan`, dan 1 pada `IntensitasBelajar`, sehingga perlu diperhatikan saat membuat ringkasan agar tidak salah interpretasi.
+2. Penulisan kategori pada seluruh variabel kategorik (`DeviceUtama`, `ModaBelajar`, `Kepuasan`, `IntensitasBelajar`) sudah konsisten, tidak ditemukan variasi ejaan atau kapitalisasi yang berbeda untuk kategori yang sama.
+:::
+
+# 4. Frekuensi dan Proporsi
+
+Sebelum menjalankan kode, prediksi:
+
+> Menurut Anda, kategori mana yang paling banyak muncul pada variabel nominal Anda?
+
+::: {.answer-box}
+**Prediksi Anda**
+
+Menurut saya, kategori "Tablet" kemungkinan paling banyak muncul pada variabel `DeviceUtama` karena didasarkan pada pengamatan sekilas pada struktur data awal `(head(data))`, serta tren mahasiswa saat ini yang banyak memanfaatkan tablet untuk kebutuhan kuliah harian.
+:::
+
+Setelah itu, buat:
+
+- tabel frekuensi untuk variabel nominal;
+- proporsi untuk variabel ordinal.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+```r
+table(...)
+prop.table(...)
+```
+
+Anda dapat menyimpan hasil `table()` ke sebuah objek terlebih dahulu sebelum menghitung proporsi.
+:::
+
+```{r}
+# Tabel frekuensi untuk variabel nominal (DeviceUtama)
+freq_device <- table(data[[nominal_var]])
+freq_device
+
+# Proporsi untuk variabel ordinal (Kepuasan)
+freq_kepuasan <- table(data[[ordinal_var]])
+prop.table(freq_kepuasan)
+```
+
+Tuliskan **dua kalimat insight** berdasarkan output.
+
+::: {.answer-box}
+**Interpretasi Anda**
+
+1. Prediksi saya benar: kategori "Tablet" memang paling banyak muncul pada `DeviceUtama`, yaitu 66 dari 101 responden (sekitar 65%), jauh di atas Laptop (23 responden) dan Smartphone (11 responden).
+2. Pada variabel `Kepuasan`, proporsi terbesar berada pada kategori "Puas" (sekitar 33%), diikuti "Cukup" (sekitar 27%) dan "Sangat Puas" (sekitar 23%), sementara "Tidak Puas" adalah proporsi terkecil (sekitar 16%), menunjukkan kecenderungan tingkat kepuasan yang cukup baik secara umum.
+:::
+
+# 5. Tabel Silang
+
+Pasangan variabel Anda:
+
+```{r}
+x <- identitas$tab_baris[1]
+y <- identitas$tab_kolom[1]
+
+cat("Baris :", x, "\n")
+cat("Kolom :", y, "\n")
+```
+
+Buat tabel silang untuk kedua variabel tersebut.
+
+Jika diperlukan, tampilkan proporsi per baris untuk membantu membaca pola.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+```r
+table(..., ...)
+prop.table(..., margin = 1)
+```
+
+Lengkapi sendiri objek yang diperlukan.
+:::
+
+```{r}
+tabel_silang <- table(data[[x]], data[[y]])
+tabel_silang
+
+# Proporsi per baris
+prop.table(tabel_silang, margin = 1)
+```
+
+Tuliskan **satu kalimat** yang menjelaskan pola yang tampak.
+
+::: {.answer-box}
+**Interpretasi Anda**
+
+Pada moda belajar "Praktik", proporsi responden dengan intensitas belajar "Sedang" tercata paling tinggi (sekitar 50%) dibandingkan moda belajar lain, sementara pada moda "Buku" dan "Video" proporsi responden dengan intensitas "Tinggi" relatif lebih besar daripada kategori "Rendah".
+:::
+
+::: {.callout-important}
+Gunakan bahasa deskriptif. Jangan langsung menyimpulkan adanya hubungan signifikan
+atau sebab-akibat.
+:::
+
+# 6. Visualisasi Kategorik
+
+Variabel yang divisualisasikan:
+
+```{r}
+v <- identitas$visualisasi[1]
+cat("Variabel grafik :", v, "\n")
+```
+
+Buat **satu grafik batang** seperti yang telah dipelajari pada Pertemuan 1.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+```r
+library(ggplot2)
+
+ggplot(..., aes(x = ...)) +
+  geom_bar() +
+  labs(...)
+```
+
+Sesuaikan objek data, variabel, judul, dan label sumbu.
+:::
+
+```{r}
+library(ggplot2)
+library(forcats)
+
+ggplot(remove_missing(data, vars = v), aes(x = fct_infreq(.data[[v]]), fill = after_stat(count))) +
+  geom_bar(width = 0.6, show.legend = FALSE, color = "white", linewidth = 0.5) +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.7, fontface = "bold", size = 4.5) +
+  scale_y_continuous(limits = c(0, 80), breaks = seq(0, 80, 20), expand = expansion(mult = c(0, 0.05))) + 
+  scale_fill_gradient(low = "#74c69d", high = "#1b4332") + 
+  labs(title = "Distribusi Perangkat Utama Mahasiswa", x = "Device Utama", y = "Jumlah Responden") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", margin = margin(b = 15), hjust = 0.5),
+    axis.title.x = element_text(face = "bold", size = 11, hjust = 0.5, margin = margin(t = 10)),
+    axis.title.y = element_text(face = "bold", size = 11, hjust = 0.5, margin = margin(r = 10)),
+    panel.grid.major.x = element_blank(),
+    plot.margin = margin(20, 20, 20, 35)
+  )
+```
+
+Tuliskan **satu kalimat** interpretasi grafik.
+
+::: {.answer-box}
+**Interpretasi Anda**
+
+Grafik batang menunjukkan bahwa "Tablet" merupakan perangkat utama yang paling dominan digunakan mahasiswa untuk belajar, jauh melampaui jumlah pengguna Laptop dan Smartphone.
+:::
+
+# 7. Kesimpulan
+
+Tuliskan **3 poin kesimpulan singkat** berdasarkan hasil analisis.
+
+Setiap kesimpulan harus:
+
+- didukung oleh output yang telah Anda hasilkan;
+- menggunakan angka yang relevan;
+- ditulis dengan bahasa Anda sendiri;
+- tidak menggunakan klaim sebab-akibat.
+
+::: {.answer-box}
+**Kesimpulan Anda**
+
+1. Sebagian besar mahasiswa (sekitar 65%, atau 66 dari 101 responden) menggunakan Tablet sebagai perangkat utama untuk belajar, sehingga perangkat ini menjadi perangkat yang paling dominan dibandingkan Laptop dan Smartphone.
+2. Tingkat kepuasan mahasiswa terhadap moda belajar cenderung positif, dengan kategori "Puas" dan "Sangat Puas" bersama-sama mencakup lebih dari 55% responden, sementara "Tidak Puas" hanya sekitar 16%.
+3. Pola pada tabel silang antara moda belajar dan intensitas belajar menunjukkan variasi yang berbeda-beda antar moda; misalnya moda "Praktik" lebih banyak berasosiasi dengan intensitas "Sedang", sedangkan moda "Buku" dan "Video" lebih banyak berasosiasi dengan intensitas "Tinggi", namun pola ini bersifat deskriptif dan tidak menunjukkan hubungan sebab-akibat.
+:::
+
+::: {.footer-note}
+**Analisis Data Kategori — Tugas 1**  
+Predict → Run → Inspect → Explain
+:::
